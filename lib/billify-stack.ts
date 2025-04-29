@@ -140,6 +140,8 @@ export class BillifyStack extends cdk.Stack {
         'ses:SendEmail',
         'ses:SendRawEmail',
         'ses:VerifyEmailIdentity',
+        'ses:ListIdentities',
+        'ses:GetIdentityVerificationAttributes',
       ],
       resources: ['*'],
     });

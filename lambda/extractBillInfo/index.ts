@@ -3,7 +3,7 @@ import { SQSEvent } from 'aws-lambda';
 import { TextractClient, AnalyzeExpenseCommand } from '@aws-sdk/client-textract';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
-import { SendEmailCommand, SESClient } from '@aws-sdk/client-ses';
+import { GetIdentityVerificationAttributesCommand, SendRawEmailCommand, SESClient, VerifyEmailIdentityCommand } from '@aws-sdk/client-ses';
 
 const REGION = process.env.REGION || 'ap-south-1';
 const BUCKET_NAME = process.env.BUCKET_NAME;
@@ -25,7 +25,16 @@ export const handler = async (event: Readonly<SQSEvent>) => {
     await saveBillInfo(billDoc);
 
     await sendEmail(billDoc);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: 'Invoice processed & Email sent successfully',
+      }),
+    };
   }
+
+  return {};
 };
 
 const extractInfoFromInvoice = async (sqsMsg: Readonly<SqsMessage>) => {
@@ -106,46 +115,50 @@ const sendEmail = async (billDoc: Readonly<Bill>) => {
     region: REGION,
   });
 
-  const params = {
-    Source: 'anmol111pal@gmail.com',
-    Destination: {
-      ToAddresses: [billDoc.email],
-    },
-    Message: {
-      Subject: {
-        Charset: 'UTF-8',
-        Data: `Your invoice has been processed for ${billDoc.total} `,
-      },
-      Body: {
-        Charset: 'UTF-8',
-        Text: {
-          Charset: 'UTF-8',
-          Data: `Hello, \n\nYour invoice has been processed successfully.\nThe total amount for this invoice is ${billDoc.total}`,
+  const verificationAttributesResponse = await sesClient.send(
+    new GetIdentityVerificationAttributesCommand({
+      Identities: [billDoc.email],
+    })
+  );
+
+  const verificationStatus = verificationAttributesResponse.VerificationAttributes?.[billDoc.email]?.VerificationStatus;
+
+  if (verificationStatus === 'Pending') {
+    console.log('The recipient is not verified.');
+
+    await sesClient.send(new VerifyEmailIdentityCommand({
+      EmailAddress: billDoc.email,
+    }));
+
+    console.log('A verification email has been sent.');
+  } else if (verificationStatus === 'Success') {
+
+    const rawMessageString = [
+      `From: anmol111pal@gmail.com`,
+      `To: ${billDoc.email}`,
+      `Subject: Invoice Processed - Amount: ${billDoc.total}`,
+      '',
+      `Your invoice has been processed for an amount of ${billDoc.total} at ${billDoc.timestamp}`,
+      '',
+      'Thanks,',
+      'Billify',
+    ].join('\r\n');
+
+    const rawMessageBytes = Buffer.from(rawMessageString);
+
+    try {
+      const sendRawEmailCommand = new SendRawEmailCommand({
+        RawMessage: {
+          Data: rawMessageBytes,
         },
-        Html: {
-          Charset: 'UTF-8',
-          Data: `<html>
-                     <body>
-                       <p>Hello ${billDoc.name},</p>
-                       <p>Your invoice has been <strong>successfully processed</strong>.</p>
-                       <p>The total amount for this invoice is <strong>₹${billDoc.total}</strong>.</p>
-                       <p>Thank you for using our service.</p>
-                       <br/>
-                       <p>Billify</p>
-                     </body>
-                   </html>`,
-        }
-      },
+        Destinations: [billDoc.email],
+      });
 
-    },
-  };
+      await sesClient.send(sendRawEmailCommand);
+      console.log('Email sent successfully.');
 
-  try {
-    const sendEmailCommand = new SendEmailCommand(params);
-    const sendEmailResponse = await sesClient.send(sendEmailCommand);
-    console.log(`Email sent successfully - ${sendEmailResponse}`);
-
-  } catch (err) {
-    console.error(`Error while sending email to ${billDoc.email}`, err);
+    } catch (err) {
+      console.error(`Error while sending email to ${billDoc.email}`, err);
+    }
   }
 };
