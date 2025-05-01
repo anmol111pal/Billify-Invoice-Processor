@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
-import * as Billify from '../../../lib/billify-stack';
+import * as Billify from '../lib/billify-stack';
 
 describe('Billify Stack', () => {
     let stack: cdk.Stack;

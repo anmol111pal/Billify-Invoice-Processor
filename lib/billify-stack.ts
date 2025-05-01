@@ -139,16 +139,25 @@ export class BillifyStack extends cdk.Stack {
       actions: [
         'ses:SendEmail',
         'ses:SendRawEmail',
-        'ses:VerifyEmailIdentity',
-        'ses:ListIdentities',
-        'ses:GetIdentityVerificationAttributes',
       ],
       resources: ['*'],
     });
-  
 
+    const verifyEmailIdentityPolicy = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: [
+        'ses:GetIdentityVerificationAttributes',
+        'ses:VerifyEmailIdentity',
+      ],
+      resources: ['*'],
+    });
+
+    invoiceUploaderFunction.addToRolePolicy(verifyEmailIdentityPolicy);
+
+    billAggregateHandler.addToRolePolicy(verifyEmailIdentityPolicy);
     billAggregateHandler.addToRolePolicy(sendEmailPolicy);
 
+    extractBillInfoHandler.addToRolePolicy(verifyEmailIdentityPolicy);
     extractBillInfoHandler.addToRolePolicy(sendEmailPolicy);
 
     extractBillInfoHandler.addEventSource(new SqsEventSource(billifyQueue));

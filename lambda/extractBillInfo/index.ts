@@ -123,7 +123,7 @@ const sendEmail = async (billDoc: Readonly<Bill>) => {
 
   const verificationStatus = verificationAttributesResponse.VerificationAttributes?.[billDoc.email]?.VerificationStatus;
 
-  if (verificationStatus === 'Pending') {
+  if (verificationStatus !== 'Success') {
     console.log('The recipient is not verified.');
 
     await sesClient.send(new VerifyEmailIdentityCommand({

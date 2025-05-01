@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import { GetIdentityVerificationAttributesCommand, SESClient, VerifyEmailIdentityCommand } from '@aws-sdk/client-ses';
 import { parse, MultipartFile } from 'lambda-multipart-parser';
 import { APIGatewayProxyEvent, APIGatewayProxyHandler } from 'aws-lambda';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,6 +17,8 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
         const name: string = parsedEvent.name;
         const email: string = parsedEvent.email;
 
+        console.log(`Received an invoice processing request by ${name} with invoice - ${file}`);
+
         const s3Client = new S3Client({
             region: REGION,
         });
@@ -23,6 +26,26 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
         const sqsClient = new SQSClient({
             region: REGION,
         });
+
+        const sesClient = new SESClient({
+            region: REGION,
+        });
+
+        const verificationAttributesResponse = await sesClient.send(
+            new GetIdentityVerificationAttributesCommand({
+                Identities: [email],
+            })
+        );
+
+        const verificationStatus = verificationAttributesResponse.VerificationAttributes?.[email]?.VerificationStatus;
+
+        if (verificationStatus !== 'Success') {
+            await sesClient.send(new VerifyEmailIdentityCommand({
+                EmailAddress: email,
+            }));
+
+            console.log('Sent an email to the user to verify it.');
+        }
 
         const putObjectCommand = new PutObjectCommand({
             Bucket: BUCKET_NAME,
@@ -52,9 +75,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
         return {
             statusCode: 200,
             body: JSON.stringify({
-                message: 'Successfully uploaded to S3 bucket & sent a msg to SQS queue',
-                name,
-                email,
+                message: 'Verify your email address using the URL provided in the mail.',
             }),
         };
 
