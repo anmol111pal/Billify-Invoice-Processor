@@ -54,7 +54,7 @@ export class BillifyStack extends cdk.Stack {
         QUEUE_URL: billifyQueue.queueUrl,
       },
       handler: 'handler',
-      entry: path.join(__dirname, '..', 'lambda', 'upload-invoice', 'index.ts'),
+      entry: path.join(__dirname, '..', 'lambda', 'uploadInvoice', 'index.ts'),
       bundling: {
         externalModules: [
           '@aws-sdk/client-s3',
@@ -125,7 +125,7 @@ export class BillifyStack extends cdk.Stack {
       description: 'This function aggregates the bills for all users & sends a consolidated bill for their monthly spend',
       runtime: Runtime.NODEJS_LATEST,
       handler: 'index.handler',
-      code: Code.fromAsset(path.join(__dirname, '..', 'lambda', 'billAggregate')),
+      code: Code.fromAsset(path.join(__dirname, '..', 'lambda', 'aggregateBills')),
       memorySize: 512,
       environment: {
         TABLE_NAME: billTable.tableName,
