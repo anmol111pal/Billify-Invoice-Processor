@@ -31,6 +31,10 @@ export class BillifyStack extends cdk.Stack {
         name: 'timestamp',
         type: AttributeType.STRING,
       },
+      timeToLiveAttribute: 'ttl',
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -113,9 +117,9 @@ export class BillifyStack extends cdk.Stack {
     const monthlyBillAggregatorRule = new Rule(this, 'MonthlyBillAggregatorRule', {
       ruleName: 'monthlyBillAggregatorRule',
       schedule: Schedule.cron({
-        day: '28',
+        day: '1',
         month: '*',
-        hour: '0',
+        hour: '11',
         minute: '0',
       }),
     });

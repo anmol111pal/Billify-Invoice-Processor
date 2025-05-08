@@ -60,7 +60,7 @@ describe('Billify Stack', () => {
     
     test('MonthlyBillAggregatorRule created with cron schedule', () => {
         template.hasResourceProperties('AWS::Events::Rule', {
-            ScheduleExpression: 'cron(0 0 28 * ? *)'
+            ScheduleExpression: 'cron(0 11 1 * ? *)'
         });
     });
 

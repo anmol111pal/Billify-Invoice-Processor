@@ -96,11 +96,21 @@ const saveBillInfo = async (billDoc: Readonly<Bill>) => {
   });
 
   const ddbDocClient = DynamoDBDocumentClient.from(dynamodbClient);
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+
+  // Set to the first day of the next month at 00:00:00 UTC
+  const nextMonthFirst = new Date(Date.UTC(year, month + 1, 1, 0, 0, 0));
+  const ttlValue = Math.floor(nextMonthFirst.getTime() / 1000);
 
   try {
     const putCommand = new PutCommand({
       TableName: TABLE_NAME,
-      Item: billDoc,
+      Item: {
+        billDoc,
+        ttl: ttlValue,
+      },
     });
 
     await ddbDocClient.send(putCommand);
