@@ -1,10 +1,14 @@
 pipeline {
     agent any
+
+    options {
+        skipDefaultCheckout()
+    }
     
     stages {
-        stage("Code") {
+        stage("Code Checkout") {
             steps {
-                git "https://github.com/anmol111pal/Billify-Invoice-Processor.git"
+                checkout scm
             }
         }
         
