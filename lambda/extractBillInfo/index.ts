@@ -108,7 +108,7 @@ const saveBillInfo = async (billDoc: Readonly<Bill>) => {
     const putCommand = new PutCommand({
       TableName: TABLE_NAME,
       Item: {
-        billDoc,
+        ...billDoc,
         ttl: ttlValue,
       },
     });
